@@ -1,45 +1,56 @@
-import { useEffect, useState } from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { useAuth } from "./context/AuthContext.jsx";
+import ProtectedRoute from "./components/ProtectedRoute.jsx";
+import Landing from "./pages/Landing.jsx";
+import Register from "./pages/Register.jsx";
+import Login from "./pages/Login.jsx";
+import CustomerDashboard from "./pages/CustomerDashboard.jsx";
+import ProviderDashboard from "./pages/ProviderDashboard.jsx";
+import AdminDashboard from "./pages/AdminDashboard.jsx";
 
 export default function App() {
-  const [health, setHealth] = useState(null);
-  const [error, setError] = useState(null);
+  const { user, loading } = useAuth();
 
-  useEffect(() => {
-    fetch("/api/health")
-      .then((res) => res.json())
-      .then((data) => setHealth(data))
-      .catch((err) => setError(err.message));
-  }, []);
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-slate-500">Loading…</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center px-4">
-      <div className="text-center max-w-lg">
-        <h1 className="text-4xl font-bold text-slate-800 mb-4">
-          Mall &amp; Home Utility Services
-        </h1>
-        <p className="text-lg text-slate-600 mb-8">
-          The application is running.
-        </p>
+    <Routes>
+      <Route path="/" element={<Landing />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/login" element={<Login />} />
 
-        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
-          <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3">
-            Backend Status
-          </h2>
-          {health && (
-            <p className="text-green-600 font-medium">
-              {health.message}
-            </p>
-          )}
-          {error && (
-            <p className="text-red-600 font-medium">
-              Unable to reach backend: {error}
-            </p>
-          )}
-          {!health && !error && (
-            <p className="text-slate-400 font-medium">Checking…</p>
-          )}
-        </div>
-      </div>
-    </div>
+      <Route
+        path="/customer"
+        element={
+          <ProtectedRoute allowedRoles={["CUSTOMER"]}>
+            <CustomerDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/provider"
+        element={
+          <ProtectedRoute allowedRoles={["PROVIDER"]}>
+            <ProviderDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN"]}>
+            <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
