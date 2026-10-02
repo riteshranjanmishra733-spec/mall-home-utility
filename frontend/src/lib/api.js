@@ -33,8 +33,29 @@ async function request(path, options = {}) {
 }
 
 export const api = {
+  // Auth
   register: (body) => request("/api/auth/register", { method: "POST", body: JSON.stringify(body) }),
   login: (body) => request("/api/auth/login", { method: "POST", body: JSON.stringify(body) }),
   me: () => request("/api/auth/me"),
   health: () => request("/api/health"),
+
+  // Categories
+  getCategories: () => request("/api/categories"),
+  getCategory: (id) => request(`/api/categories/${id}`),
+
+  // Services
+  getServices: (categoryId) =>
+    request(`/api/services${categoryId ? `?categoryId=${categoryId}` : ""}`),
+  getService: (id) => request(`/api/services/${id}`),
+
+  // Providers
+  getProvidersForService: (serviceId, params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return request(`/api/providers/service/${serviceId}${query ? `?${query}` : ""}`);
+  },
+  getProvider: (id) => request(`/api/providers/${id}`),
+  searchProviders: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return request(`/api/providers/search${query ? `?${query}` : ""}`);
+  },
 };

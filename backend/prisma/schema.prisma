@@ -16,5 +16,67 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  providerProfile ProviderProfile?
+
   @@map("users")
+}
+
+model Category {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique
+  description String?
+  icon        String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  services Service[]
+
+  @@map("categories")
+}
+
+model Service {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  description String?
+  categoryId  String   @map("category_id")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  category       Category        @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  providerServices ProviderService[]
+
+  @@map("services")
+}
+
+model ProviderProfile {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @unique @map("user_id")
+  bio         String?
+  city        String?
+  area        String?
+  pincode     String?
+  isAvailable Boolean  @default(true) @map("is_available")
+  phone       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  providerServices ProviderService[]
+
+  @@map("provider_profiles")
+}
+
+model ProviderService {
+  id          String   @id @default(uuid()) @db.Uuid
+  providerId  String   @map("provider_id")
+  serviceId   String   @map("service_id")
+  isAvailable Boolean  @default(true) @map("is_available")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  provider ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  service  Service          @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, serviceId])
+  @@map("provider_services")
 }
