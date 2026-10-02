@@ -11,6 +11,8 @@ import ProviderSearch from "./pages/ProviderSearch.jsx";
 import ProviderDetail from "./pages/ProviderDetail.jsx";
 import ProviderDashboard from "./pages/ProviderDashboard.jsx";
 import AdminDashboard from "./pages/AdminDashboard.jsx";
+import BookingForm from "./pages/BookingForm.jsx";
+import MyBookings from "./pages/MyBookings.jsx";
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -75,6 +77,22 @@ export default function App() {
         element={
           <ProtectedRoute allowedRoles={["CUSTOMER"]}>
             <ProviderDetail />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/customer/providers/:providerId/services/:serviceId/book"
+        element={
+          <ProtectedRoute allowedRoles={["CUSTOMER"]}>
+            <BookingForm />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/customer/bookings"
+        element={
+          <ProtectedRoute allowedRoles={["CUSTOMER"]}>
+            <MyBookings />
           </ProtectedRoute>
         }
       />

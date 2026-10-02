@@ -7,6 +7,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum BookingStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  COMPLETED
+  CANCELLED
+
+  @@map("booking_status")
+}
+
 model User {
   id        String   @id @default(uuid()) @db.Uuid
   name      String
@@ -17,6 +27,7 @@ model User {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   providerProfile ProviderProfile?
+  bookings        Booking[]
 
   @@map("users")
 }
@@ -38,20 +49,21 @@ model Service {
   id          String   @id @default(uuid()) @db.Uuid
   name        String
   description String?
-  categoryId  String   @map("category_id")
+  categoryId  String   @map("category_id") @db.Uuid
   isActive    Boolean  @default(true) @map("is_active")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  category       Category        @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  category         Category          @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   providerServices ProviderService[]
+  bookings         Booking[]
 
   @@map("services")
 }
 
 model ProviderProfile {
   id          String   @id @default(uuid()) @db.Uuid
-  userId      String   @unique @map("user_id")
+  userId      String   @unique @map("user_id") @db.Uuid
   bio         String?
   city        String?
   area        String?
@@ -61,22 +73,45 @@ model ProviderProfile {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   providerServices ProviderService[]
+  bookings         Booking[]
 
   @@map("provider_profiles")
 }
 
 model ProviderService {
   id          String   @id @default(uuid()) @db.Uuid
-  providerId  String   @map("provider_id")
-  serviceId   String   @map("service_id")
+  providerId  String   @map("provider_id") @db.Uuid
+  serviceId   String   @map("service_id") @db.Uuid
   isAvailable Boolean  @default(true) @map("is_available")
   createdAt   DateTime @default(now()) @map("created_at")
 
   provider ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  service  Service          @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  service  Service         @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
   @@unique([providerId, serviceId])
   @@map("provider_services")
+}
+
+model Booking {
+  id          String        @id @default(uuid()) @db.Uuid
+  customerId  String        @map("customer_id") @db.Uuid
+  providerId  String        @map("provider_id") @db.Uuid
+  serviceId   String        @map("service_id") @db.Uuid
+  bookingDate DateTime      @map("booking_date") @db.Date
+  bookingTime String?       @map("booking_time")
+  address     String
+  notes       String?
+  status      BookingStatus @default(PENDING)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  customer User            @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  provider ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Restrict)
+  service  Service         @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+
+  @@index([customerId, createdAt], map: "idx_bookings_customer_created_at")
+  @@index([providerId, createdAt], map: "idx_bookings_provider_created_at")
+  @@map("bookings")
 }

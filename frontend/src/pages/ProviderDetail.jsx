@@ -79,25 +79,33 @@ export default function ProviderDetail() {
               ) : (
                 <div className="grid gap-2 sm:grid-cols-2">
                   {provider.services.map((s) => (
-                    <Link
-                      key={s.id}
-                      to={`/customer/services/${s.id}`}
-                      className="flex items-center justify-between p-3 rounded border border-slate-200 hover:border-blue-300 transition"
-                    >
+                    <div key={s.id} className="flex items-center justify-between gap-3 p-3 rounded border border-slate-200">
                       <div>
-                        <p className="text-sm font-medium text-slate-800">{s.name}</p>
+                        <Link to={`/customer/services/${s.id}`} className="text-sm font-medium text-slate-800 hover:text-blue-600">
+                          {s.name}
+                        </Link>
                         <p className="text-xs text-slate-400">{s.categoryName}</p>
                       </div>
-                      <span
-                        className={`text-xs px-2 py-0.5 rounded ${
-                          s.isAvailable
-                            ? "bg-green-50 text-green-600"
-                            : "bg-slate-50 text-slate-400"
-                        }`}
-                      >
-                        {s.isAvailable ? "Available" : "Off"}
-                      </span>
-                    </Link>
+                      <div className="flex shrink-0 flex-col items-end gap-2">
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded ${
+                            s.isAvailable && provider.isAvailable
+                              ? "bg-green-50 text-green-600"
+                              : "bg-slate-50 text-slate-400"
+                          }`}
+                        >
+                          {s.isAvailable && provider.isAvailable ? "Available" : "Off"}
+                        </span>
+                        {s.isAvailable && provider.isAvailable ? (
+                          <Link
+                            to={`/customer/providers/${id}/services/${s.id}/book`}
+                            className="text-sm font-medium text-blue-600 hover:text-blue-700"
+                          >
+                            Book Service
+                          </Link>
+                        ) : null}
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}

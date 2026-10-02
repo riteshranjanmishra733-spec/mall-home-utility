@@ -42,6 +42,14 @@ export default function CustomerDashboard() {
               Search for providers by city, area, or pincode
             </p>
           </Link>
+
+          <Link
+            to="/customer/bookings"
+            className="block p-6 bg-white rounded-lg border border-slate-200 hover:border-blue-300 hover:shadow-sm transition"
+          >
+            <h2 className="text-lg font-semibold text-slate-800 mb-1">My Bookings</h2>
+            <p className="text-sm text-slate-500">View your service requests and their status</p>
+          </Link>
         </div>
       </main>
     </div>

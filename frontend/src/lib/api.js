@@ -58,4 +58,10 @@ export const api = {
     const query = new URLSearchParams(params).toString();
     return request(`/api/providers/search${query ? `?${query}` : ""}`);
   },
+
+  // Bookings
+  createBooking: (body) => request("/api/bookings", { method: "POST", body: JSON.stringify(body) }),
+  getBookings: () => request("/api/bookings"),
+  getBooking: (id) => request(`/api/bookings/${id}`),
+  getProviderBookings: () => request("/api/provider/bookings"),
 };
