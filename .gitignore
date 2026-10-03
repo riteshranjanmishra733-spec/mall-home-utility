@@ -3,3 +3,6 @@ node_modules/
 
 # Build output
 frontend/dist/
+
+# Local admin provisioning script
+backend/createAdmin.mjs
