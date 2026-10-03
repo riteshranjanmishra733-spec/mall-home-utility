@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 
+const PUBLIC_REGISTRATION_ROLES = ["CUSTOMER", "PROVIDER"];
+
 export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -34,6 +36,11 @@ export default function Register() {
 
     if (form.password.length < 6) {
       setError("Password must be at least 6 characters");
+      return;
+    }
+
+    if (!PUBLIC_REGISTRATION_ROLES.includes(form.role)) {
+      setError("Please select a valid account role");
       return;
     }
 

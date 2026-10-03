@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import prisma from "../lib/prisma.js";
 
-const VALID_ROLES = ["CUSTOMER", "PROVIDER", "ADMIN"];
+const PUBLIC_REGISTRATION_ROLES = ["CUSTOMER", "PROVIDER"];
 
 function signToken(user) {
   return jwt.sign(
@@ -36,8 +36,8 @@ export async function register({ name, email, password, role }) {
     return { status: 400, data: { error: "Password must be at least 6 characters" } };
   }
 
-  const assignedRole = role || "CUSTOMER";
-  if (!VALID_ROLES.includes(assignedRole)) {
+  const assignedRole = role === undefined ? "CUSTOMER" : role;
+  if (typeof assignedRole !== "string" || !PUBLIC_REGISTRATION_ROLES.includes(assignedRole)) {
     return { status: 400, data: { error: "Invalid role" } };
   }
 
