@@ -55,6 +55,8 @@ export default function AdminDashboard() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [mutationError, setMutationError] = useState("");
+  const [updatingAction, setUpdatingAction] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
@@ -90,6 +92,89 @@ export default function AdminDashboard() {
       cancelled = true;
     };
   }, [reloadKey]);
+
+  async function updateProviderAvailability(provider) {
+    setUpdatingAction(`provider:${provider.id}`);
+    setMutationError("");
+    try {
+      const { provider: updatedProvider } = await api.setAdminProviderAvailability(
+        provider.id,
+        !provider.isAvailable
+      );
+      setProviders((current) => current.map((item) =>
+        item.id === updatedProvider.id ? updatedProvider : item
+      ));
+    } catch (err) {
+      setMutationError(err.message || "Failed to update provider availability");
+    } finally {
+      setUpdatingAction("");
+    }
+  }
+
+  async function updateProviderServiceAvailability(providerId, service) {
+    const actionKey = `provider-service:${providerId}:${service.id}`;
+    setUpdatingAction(actionKey);
+    setMutationError("");
+    try {
+      const { providerService } = await api.setAdminProviderServiceAvailability(
+        providerId,
+        service.id,
+        !service.isAvailable
+      );
+      setProviders((current) => current.map((provider) => provider.id !== providerId ? provider : {
+        ...provider,
+        offeredServices: provider.offeredServices.map((item) =>
+          item.id === providerService.serviceId
+            ? { ...item, isAvailable: providerService.isAvailable }
+            : item
+        ),
+      }));
+    } catch (err) {
+      setMutationError(err.message || "Failed to update offered service availability");
+    } finally {
+      setUpdatingAction("");
+    }
+  }
+
+  async function updateServiceStatus(service) {
+    setUpdatingAction(`service:${service.id}`);
+    setMutationError("");
+    try {
+      const { service: updatedService } = await api.setAdminServiceStatus(
+        service.id,
+        !service.isActive
+      );
+      setServices((current) => current.map((item) =>
+        item.id === updatedService.id ? updatedService : item
+      ));
+      setProviders((current) => current.map((provider) => ({
+        ...provider,
+        offeredServices: provider.offeredServices.map((item) =>
+          item.id === updatedService.id ? { ...item, isActive: updatedService.isActive } : item
+        ),
+      })));
+    } catch (err) {
+      setMutationError(err.message || "Failed to update service status");
+    } finally {
+      setUpdatingAction("");
+    }
+  }
+
+  async function updateBookingStatus(booking, status) {
+    setUpdatingAction(`booking:${booking.id}`);
+    setMutationError("");
+    try {
+      const { booking: updatedBooking } = await api.setAdminBookingStatus(booking.id, status);
+      setBookings((current) => current.map((item) =>
+        item.id === updatedBooking.id ? updatedBooking : item
+      ));
+    } catch (err) {
+      setMutationError(err.message || "Failed to update booking status");
+      if (err.status === 409) setReloadKey((key) => key + 1);
+    } finally {
+      setUpdatingAction("");
+    }
+  }
 
   const serviceCountsByCategory = services.reduce((counts, service) => {
     counts[service.category.id] = (counts[service.category.id] || 0) + 1;
@@ -134,6 +219,11 @@ export default function AdminDashboard() {
       </header>
 
       <main className="mx-auto max-w-7xl space-y-6 px-4 py-6">
+        {mutationError && (
+          <div role="alert" className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {mutationError}
+          </div>
+        )}
         {error ? (
           <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             <span>Unable to load admin data: {error}</span>
@@ -179,13 +269,41 @@ export default function AdminDashboard() {
                     <td className="whitespace-nowrap px-4 py-3 text-slate-600">
                       {[provider.city, provider.area, provider.pincode].filter(Boolean).join(", ") || "—"}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">{provider.isAvailable ? "Available" : "Unavailable"}</td>
+                    <td className="px-4 py-3">
+                      <p className="mb-2 text-slate-600">{provider.isAvailable ? "Available" : "Unavailable"}</p>
+                      <button
+                        type="button"
+                        onClick={() => updateProviderAvailability(provider)}
+                        disabled={Boolean(updatingAction)}
+                        className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                      >
+                        {updatingAction === `provider:${provider.id}` ? "Saving…" : provider.isAvailable ? "Set unavailable" : "Set available"}
+                      </button>
+                    </td>
                     <td className="min-w-64 px-4 py-3 text-slate-600">
-                      {provider.offeredServices.length === 0 ? "None" : provider.offeredServices.map((service) => (
-                        <span key={service.id} className="mr-1 inline-block rounded bg-slate-100 px-2 py-1 text-xs">
-                          {service.name}{!service.isActive || !service.isAvailable ? " (off)" : ""}
-                        </span>
-                      ))}
+                      {provider.offeredServices.length === 0 ? "None" : (
+                        <div className="space-y-2">
+                          {provider.offeredServices.map((service) => {
+                            const actionKey = `provider-service:${provider.id}:${service.id}`;
+                            return (
+                              <div key={service.id} className="flex items-center justify-between gap-3">
+                                <span>
+                                  {service.name} · {service.isAvailable ? "On" : "Off"}
+                                  {!service.isActive && " · service inactive"}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => updateProviderServiceAvailability(provider.id, service)}
+                                  disabled={Boolean(updatingAction)}
+                                  className="shrink-0 rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                                >
+                                  {updatingAction === actionKey ? "Saving…" : service.isAvailable ? "Disable" : "Enable"}
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -202,7 +320,17 @@ export default function AdminDashboard() {
                         {service.description && <p className="text-xs text-slate-500">{service.description}</p>}
                       </td>
                       <td className="px-4 py-3 text-slate-600">{service.category.name}</td>
-                      <td className="px-4 py-3 text-slate-600">{service.isActive ? "Active" : "Inactive"}</td>
+                      <td className="px-4 py-3">
+                        <p className="mb-2 text-slate-600">{service.isActive ? "Active" : "Inactive"}</p>
+                        <button
+                          type="button"
+                          onClick={() => updateServiceStatus(service)}
+                          disabled={Boolean(updatingAction)}
+                          className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                        >
+                          {updatingAction === `service:${service.id}` ? "Saving…" : service.isActive ? "Deactivate" : "Activate"}
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </Table>
@@ -222,8 +350,8 @@ export default function AdminDashboard() {
             </div>
 
             <Section title="Bookings" count={bookings.length}>
-              <Table headers={["Customer", "Provider", "Service", "Date / time", "Status", "Address / notes"]}>
-                {bookings.length === 0 ? <EmptyRow columns={6}>No bookings found.</EmptyRow> : bookings.map((booking) => (
+              <Table headers={["Customer", "Provider", "Service", "Date / time", "Status", "Address / notes", "Actions"]}>
+                {bookings.length === 0 ? <EmptyRow columns={7}>No bookings found.</EmptyRow> : bookings.map((booking) => (
                   <tr key={booking.id}>
                     <td className="min-w-44 px-4 py-3">
                       <p className="font-medium text-slate-800">{booking.customer.name}</p>
@@ -241,6 +369,35 @@ export default function AdminDashboard() {
                     <td className="min-w-56 px-4 py-3 text-slate-600">
                       <p>{booking.address}</p>
                       {booking.notes && <p className="mt-1 text-xs text-slate-500">{booking.notes}</p>}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <div className="flex flex-wrap gap-2">
+                        {booking.status === "PENDING" && [
+                          ["ACCEPTED", "Accept"],
+                          ["REJECTED", "Reject"],
+                          ["CANCELLED", "Cancel"],
+                        ].map(([status, label]) => (
+                          <button
+                            key={status}
+                            type="button"
+                            onClick={() => updateBookingStatus(booking, status)}
+                            disabled={Boolean(updatingAction)}
+                            className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                          >
+                            {updatingAction === `booking:${booking.id}` ? "Saving…" : label}
+                          </button>
+                        ))}
+                        {booking.status === "ACCEPTED" && (
+                          <button
+                            type="button"
+                            onClick={() => updateBookingStatus(booking, "COMPLETED")}
+                            disabled={Boolean(updatingAction)}
+                            className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                          >
+                            {updatingAction === `booking:${booking.id}` ? "Saving…" : "Complete"}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

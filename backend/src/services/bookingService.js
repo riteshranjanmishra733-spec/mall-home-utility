@@ -9,6 +9,18 @@ const providerStatusTransitions = {
   ACCEPTED: ["COMPLETED"],
 };
 const allowedProviderStatuses = new Set(["ACCEPTED", "REJECTED", "COMPLETED", "CANCELLED"]);
+const adminBookingDetails = {
+  id: true,
+  bookingDate: true,
+  bookingTime: true,
+  address: true,
+  notes: true,
+  status: true,
+  createdAt: true,
+  customer: { select: { name: true, email: true } },
+  provider: { select: { user: { select: { name: true, email: true } } } },
+  service: { select: { name: true } },
+};
 
 function isUuid(value) {
   return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
@@ -188,4 +200,51 @@ export async function updateProviderBookingStatus(userId, bookingId, nextStatus)
     },
   });
   return { status: 200, data: { booking: updatedBooking } };
+}
+
+export async function updateAdminBookingStatus(bookingId, nextStatus) {
+  if (!isUuid(bookingId)) {
+    return { status: 400, data: { error: "A valid booking ID is required" } };
+  }
+  if (!allowedProviderStatuses.has(nextStatus)) {
+    return {
+      status: 400,
+      data: { error: "Status must be ACCEPTED, REJECTED, COMPLETED, or CANCELLED" },
+    };
+  }
+
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    select: { id: true, status: true },
+  });
+  if (!booking) return { status: 404, data: { error: "Booking not found" } };
+
+  if (!providerStatusTransitions[booking.status]?.includes(nextStatus)) {
+    return {
+      status: 409,
+      data: { error: `Cannot change booking status from ${booking.status} to ${nextStatus}` },
+    };
+  }
+
+  const update = await prisma.booking.updateMany({
+    where: { id: booking.id, status: booking.status },
+    data: { status: nextStatus },
+  });
+  if (update.count === 0) {
+    return { status: 409, data: { error: "Booking status changed; refresh and try again" } };
+  }
+
+  const updatedBooking = await prisma.booking.findUnique({
+    where: { id: booking.id },
+    select: adminBookingDetails,
+  });
+  return {
+    status: 200,
+    data: {
+      booking: {
+        ...updatedBooking,
+        provider: updatedBooking.provider.user,
+      },
+    },
+  };
 }

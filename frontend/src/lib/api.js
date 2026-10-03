@@ -26,7 +26,9 @@ async function request(path, options = {}) {
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    throw new Error(data.error || "Request failed");
+    const error = new Error(data.error || "Request failed");
+    error.status = res.status;
+    throw error;
   }
 
   return data;
@@ -75,4 +77,15 @@ export const api = {
   getAdminServices: () => request("/api/admin/services"),
   getAdminCategories: () => request("/api/admin/categories"),
   getAdminBookings: () => request("/api/admin/bookings"),
+  setAdminProviderAvailability: (id, isAvailable) =>
+    request(`/api/admin/providers/${id}/availability`, { method: "PATCH", body: JSON.stringify({ isAvailable }) }),
+  setAdminProviderServiceAvailability: (providerId, serviceId, isAvailable) =>
+    request(`/api/admin/providers/${providerId}/services/${serviceId}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ isAvailable }),
+    }),
+  setAdminServiceStatus: (id, isActive) =>
+    request(`/api/admin/services/${id}/status`, { method: "PATCH", body: JSON.stringify({ isActive }) }),
+  setAdminBookingStatus: (id, status) =>
+    request(`/api/admin/bookings/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
 };

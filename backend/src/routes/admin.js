@@ -7,6 +7,10 @@ import {
   listProviders,
   listServices,
   listUsers,
+  setBookingStatus,
+  setProviderAvailability,
+  setProviderServiceAvailability,
+  setServiceStatus,
 } from "../controllers/adminController.js";
 
 const router = express.Router();
@@ -18,5 +22,9 @@ router.get("/providers", listProviders);
 router.get("/services", listServices);
 router.get("/categories", listCategories);
 router.get("/bookings", listBookings);
+router.patch("/providers/:id/availability", setProviderAvailability);
+router.patch("/providers/:providerId/services/:serviceId/status", setProviderServiceAvailability);
+router.patch("/services/:id/status", setServiceStatus);
+router.patch("/bookings/:id/status", setBookingStatus);
 
 export default router;
