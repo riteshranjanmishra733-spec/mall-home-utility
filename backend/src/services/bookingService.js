@@ -4,6 +4,11 @@ const bookingDetails = {
   service: { select: { id: true, name: true } },
   provider: { select: { id: true, user: { select: { name: true } } } },
 };
+const providerStatusTransitions = {
+  PENDING: ["ACCEPTED", "REJECTED", "CANCELLED"],
+  ACCEPTED: ["COMPLETED"],
+};
+const allowedProviderStatuses = new Set(["ACCEPTED", "REJECTED", "COMPLETED", "CANCELLED"]);
 
 function isUuid(value) {
   return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
@@ -92,4 +97,49 @@ export async function getProviderBookings(userId) {
     orderBy: { createdAt: "desc" },
   });
   return { status: 200, data: { bookings } };
+}
+
+export async function updateProviderBookingStatus(userId, bookingId, nextStatus) {
+  if (!isUuid(bookingId)) {
+    return { status: 400, data: { error: "A valid booking ID is required" } };
+  }
+  if (!allowedProviderStatuses.has(nextStatus)) {
+    return {
+      status: 400,
+      data: { error: "Status must be ACCEPTED, REJECTED, COMPLETED, or CANCELLED" },
+    };
+  }
+
+  const profile = await prisma.providerProfile.findUnique({ where: { userId } });
+  if (!profile) return { status: 404, data: { error: "Provider profile not found" } };
+
+  const booking = await prisma.booking.findFirst({
+    where: { id: bookingId, providerId: profile.id },
+    select: { id: true, status: true },
+  });
+  if (!booking) return { status: 404, data: { error: "Booking not found" } };
+
+  if (!providerStatusTransitions[booking.status]?.includes(nextStatus)) {
+    return {
+      status: 409,
+      data: { error: `Cannot change booking status from ${booking.status} to ${nextStatus}` },
+    };
+  }
+
+  const update = await prisma.booking.updateMany({
+    where: { id: booking.id, providerId: profile.id, status: booking.status },
+    data: { status: nextStatus },
+  });
+  if (update.count === 0) {
+    return { status: 409, data: { error: "Booking status changed; refresh and try again" } };
+  }
+
+  const updatedBooking = await prisma.booking.findUnique({
+    where: { id: booking.id },
+    include: {
+      ...bookingDetails,
+      customer: { select: { id: true, name: true, email: true } },
+    },
+  });
+  return { status: 200, data: { booking: updatedBooking } };
 }

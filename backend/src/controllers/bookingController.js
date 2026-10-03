@@ -3,6 +3,7 @@ import {
   getCustomerBooking,
   getCustomerBookings,
   getProviderBookings,
+  updateProviderBookingStatus as updateProviderBookingStatusRecord,
 } from "../services/bookingService.js";
 
 export async function createBooking(req, res) {
@@ -42,5 +43,15 @@ export async function listProviderBookings(req, res) {
   } catch (err) {
     console.error("List provider bookings error:", err);
     return res.status(500).json({ error: "Failed to fetch provider bookings" });
+  }
+}
+
+export async function updateProviderBookingStatus(req, res) {
+  try {
+    const result = await updateProviderBookingStatusRecord(req.user.id, req.params.id, req.body?.status);
+    return res.status(result.status).json(result.data);
+  } catch (err) {
+    console.error("Update provider booking status error:", err);
+    return res.status(500).json({ error: "Failed to update booking status" });
   }
 }

@@ -64,4 +64,6 @@ export const api = {
   getBookings: () => request("/api/bookings"),
   getBooking: (id) => request(`/api/bookings/${id}`),
   getProviderBookings: () => request("/api/provider/bookings"),
+  updateProviderBookingStatus: (id, status) =>
+    request(`/api/provider/bookings/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
 };
