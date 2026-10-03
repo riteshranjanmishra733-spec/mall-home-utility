@@ -28,6 +28,23 @@ export async function createBooking(customerId, input = {}) {
   if (Number.isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== bookingDate) {
     return { status: 400, data: { error: "A valid booking date is required" } };
   }
+  // Booking dates are normalized to UTC midnight, so compare calendar dates in UTC.
+  const todayUtc = new Date().toISOString().slice(0, 10);
+  if (bookingDate < todayUtc) {
+    return { status: 400, data: { error: "Booking date cannot be in the past" } };
+  }
+
+  let normalizedBookingTime = null;
+  if (bookingTime !== undefined && bookingTime !== null) {
+    if (typeof bookingTime !== "string") {
+      return { status: 400, data: { error: "Booking time must use HH:mm format" } };
+    }
+    const trimmedBookingTime = bookingTime.trim();
+    if (trimmedBookingTime && !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(trimmedBookingTime)) {
+      return { status: 400, data: { error: "Booking time must use HH:mm format" } };
+    }
+    normalizedBookingTime = trimmedBookingTime || null;
+  }
 
   if (typeof address !== "string" || !address.trim()) {
     return { status: 400, data: { error: "Address is required" } };
@@ -56,7 +73,7 @@ export async function createBooking(customerId, input = {}) {
       providerId,
       serviceId,
       bookingDate: parsedDate,
-      bookingTime: typeof bookingTime === "string" && bookingTime.trim() ? bookingTime.trim() : null,
+      bookingTime: normalizedBookingTime,
       address: address.trim(),
       notes: typeof notes === "string" && notes.trim() ? notes.trim() : null,
     },
@@ -82,6 +99,35 @@ export async function getCustomerBooking(customerId, bookingId) {
   });
   if (!booking) return { status: 404, data: { error: "Booking not found" } };
   return { status: 200, data: { booking } };
+}
+
+export async function cancelCustomerBooking(customerId, bookingId) {
+  if (!isUuid(bookingId)) {
+    return { status: 400, data: { error: "A valid booking ID is required" } };
+  }
+
+  const booking = await prisma.booking.findFirst({
+    where: { id: bookingId, customerId },
+    select: { id: true, status: true },
+  });
+  if (!booking) return { status: 404, data: { error: "Booking not found" } };
+  if (booking.status !== "PENDING") {
+    return { status: 409, data: { error: `Cannot cancel a booking with status ${booking.status}` } };
+  }
+
+  const update = await prisma.booking.updateMany({
+    where: { id: booking.id, customerId, status: "PENDING" },
+    data: { status: "CANCELLED" },
+  });
+  if (update.count === 0) {
+    return { status: 409, data: { error: "Booking status changed; refresh and try again" } };
+  }
+
+  const updatedBooking = await prisma.booking.findFirst({
+    where: { id: booking.id, customerId },
+    include: bookingDetails,
+  });
+  return { status: 200, data: { booking: updatedBooking } };
 }
 
 export async function getProviderBookings(userId) {

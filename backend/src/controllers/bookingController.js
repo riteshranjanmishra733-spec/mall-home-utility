@@ -1,5 +1,6 @@
 import {
   createBooking as createBookingRecord,
+  cancelCustomerBooking as cancelCustomerBookingRecord,
   getCustomerBooking,
   getCustomerBookings,
   getProviderBookings,
@@ -33,6 +34,16 @@ export async function getCustomerBookingById(req, res) {
   } catch (err) {
     console.error("Get customer booking error:", err);
     return res.status(500).json({ error: "Failed to fetch booking" });
+  }
+}
+
+export async function cancelCustomerBooking(req, res) {
+  try {
+    const result = await cancelCustomerBookingRecord(req.user.id, req.params.id);
+    return res.status(result.status).json(result.data);
+  } catch (err) {
+    console.error("Cancel customer booking error:", err);
+    return res.status(500).json({ error: "Failed to cancel booking" });
   }
 }
 

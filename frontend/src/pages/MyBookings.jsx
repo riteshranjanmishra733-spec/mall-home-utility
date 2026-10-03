@@ -15,6 +15,7 @@ export default function MyBookings() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [cancellingBookingId, setCancellingBookingId] = useState(null);
 
   useEffect(() => {
     api.getBookings()
@@ -22,6 +23,21 @@ export default function MyBookings() {
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
+
+  async function cancelBooking(bookingId) {
+    setCancellingBookingId(bookingId);
+    setError("");
+    try {
+      const { booking } = await api.cancelBooking(bookingId);
+      setBookings((current) => current.map((item) =>
+        item.id === booking.id ? { ...item, ...booking } : item
+      ));
+    } catch (err) {
+      setError(`Could not cancel booking: ${err.message}`);
+    } finally {
+      setCancellingBookingId(null);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -65,6 +81,16 @@ export default function MyBookings() {
                     <div><dt className="text-xs text-slate-400">Date and time</dt><dd className="text-slate-700">{date}{booking.bookingTime ? ` · ${booking.bookingTime}` : " · Time not specified"}</dd></div>
                     <div><dt className="text-xs text-slate-400">Address</dt><dd className="text-slate-700">{booking.address}</dd></div>
                   </dl>
+                  {booking.status === "PENDING" && (
+                    <button
+                      type="button"
+                      onClick={() => cancelBooking(booking.id)}
+                      disabled={cancellingBookingId === booking.id}
+                      className="mt-4 px-3 py-1.5 text-sm bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-60"
+                    >
+                      {cancellingBookingId === booking.id ? "Cancelling…" : "Cancel booking"}
+                    </button>
+                  )}
                 </article>
               );
             })}
