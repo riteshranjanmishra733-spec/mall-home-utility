@@ -23,7 +23,15 @@ function safeUser(user) {
   };
 }
 
-export async function register({ name, email, password, role }) {
+function isUuid(value) {
+  return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
+
+function optionalText(value) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+export async function register({ name, email, password, role, city, area, pincode, phone, bio, serviceIds }) {
   if (!name || !email || !password) {
     return { status: 400, data: { error: "Name, email, and password are required" } };
   }
@@ -41,15 +49,64 @@ export async function register({ name, email, password, role }) {
     return { status: 400, data: { error: "Invalid role" } };
   }
 
+  let providerDetails;
+  let uniqueServiceIds = [];
+  if (assignedRole === "PROVIDER") {
+    if (typeof city !== "string" || !city.trim()) {
+      return { status: 400, data: { error: "City is required for provider registration" } };
+    }
+    if (!Array.isArray(serviceIds) || serviceIds.length === 0) {
+      return { status: 400, data: { error: "Select at least one service" } };
+    }
+    if (serviceIds.some((serviceId) => !isUuid(serviceId))) {
+      return { status: 400, data: { error: "Service IDs must be valid UUIDs" } };
+    }
+
+    uniqueServiceIds = [...new Set(serviceIds.map((serviceId) => serviceId.toLowerCase()))];
+    providerDetails = {
+      bio: optionalText(bio),
+      city: city.trim(),
+      area: optionalText(area),
+      pincode: optionalText(pincode),
+      phone: optionalText(phone),
+    };
+  }
+
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     return { status: 409, data: { error: "Email already registered" } };
   }
 
   const hashed = await bcrypt.hash(password, 10);
-  const user = await prisma.user.create({
-    data: { name, email, password: hashed, role: assignedRole },
-  });
+  let user;
+  if (assignedRole === "PROVIDER") {
+    user = await prisma.$transaction(async (tx) => {
+      const activeServices = await tx.service.findMany({
+        where: { id: { in: uniqueServiceIds }, isActive: true },
+        select: { id: true },
+      });
+      if (activeServices.length !== uniqueServiceIds.length) return null;
+
+      const createdUser = await tx.user.create({
+        data: { name, email, password: hashed, role: assignedRole },
+      });
+      const profile = await tx.providerProfile.create({
+        data: { userId: createdUser.id, ...providerDetails },
+      });
+      await tx.providerService.createMany({
+        data: uniqueServiceIds.map((serviceId) => ({ providerId: profile.id, serviceId })),
+      });
+
+      return createdUser;
+    });
+    if (!user) {
+      return { status: 400, data: { error: "One or more selected services are invalid or inactive" } };
+    }
+  } else {
+    user = await prisma.user.create({
+      data: { name, email, password: hashed, role: assignedRole },
+    });
+  }
 
   const token = signToken(user);
   return { status: 201, data: { token, user: safeUser(user) } };
