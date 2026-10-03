@@ -67,4 +67,12 @@ export const api = {
   getProviderBookings: () => request("/api/provider/bookings"),
   updateProviderBookingStatus: (id, status) =>
     request(`/api/provider/bookings/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
+
+  // Admin
+  getAdminOverview: () => request("/api/admin/overview"),
+  getAdminUsers: () => request("/api/admin/users"),
+  getAdminProviders: () => request("/api/admin/providers"),
+  getAdminServices: () => request("/api/admin/services"),
+  getAdminCategories: () => request("/api/admin/categories"),
+  getAdminBookings: () => request("/api/admin/bookings"),
 };
