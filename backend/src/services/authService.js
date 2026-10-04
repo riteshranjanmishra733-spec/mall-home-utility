@@ -91,7 +91,7 @@ export async function register({ name, email, password, role, city, area, pincod
         data: { name, email, password: hashed, role: assignedRole },
       });
       const profile = await tx.providerProfile.create({
-        data: { userId: createdUser.id, ...providerDetails },
+        data: { userId: createdUser.id, ...providerDetails, verificationStatus: "PENDING" },
       });
       await tx.providerService.createMany({
         data: uniqueServiceIds.map((serviceId) => ({ providerId: profile.id, serviceId })),

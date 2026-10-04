@@ -77,10 +77,26 @@ export default function MyBookings() {
                       {booking.status}
                     </span>
                   </div>
-                  <dl className="grid gap-3 sm:grid-cols-2 mt-4 text-sm">
-                    <div><dt className="text-xs text-slate-400">Date and time</dt><dd className="text-slate-700">{date}{booking.bookingTime ? ` · ${booking.bookingTime}` : " · Time not specified"}</dd></div>
-                    <div><dt className="text-xs text-slate-400">Address</dt><dd className="text-slate-700">{booking.address}</dd></div>
-                  </dl>
+                 <dl className="grid gap-3 sm:grid-cols-2 mt-4 text-sm">
+  <div>
+    <dt className="text-xs text-slate-400">Date and time</dt>
+    <dd className="text-slate-700">
+      {date}{booking.bookingTime ? ` · ${booking.bookingTime}` : " · Time not specified"}
+    </dd>
+  </div>
+
+  <div>
+    <dt className="text-xs text-slate-400">Address</dt>
+    <dd className="text-slate-700">{booking.address}</dd>
+  </div>
+
+  <div>
+    <dt className="text-xs text-slate-400">Price</dt>
+    <dd className="text-slate-700 font-semibold">
+      ₹{booking.price}
+    </dd>
+  </div>
+</dl>
                   {booking.status === "PENDING" && (
                     <button
                       type="button"

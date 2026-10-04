@@ -14,17 +14,18 @@ function formatProvider(profile) {
       id: ps.service.id,
       name: ps.service.name,
       categoryName: ps.service.category.name,
+      price: ps.price,
       isAvailable: ps.isAvailable,
     })),
   };
 }
 
 export async function getProvidersByService(serviceId, { city, area, pincode, available } = {}) {
-  const where = { serviceId };
+  const where = { serviceId, provider: { verificationStatus: "APPROVED" } };
 
   if (available === "true") {
     where.isAvailable = true;
-    where.provider = { isAvailable: true };
+    where.provider = { ...where.provider, isAvailable: true };
   }
 
   if (city) {
@@ -59,8 +60,8 @@ export async function getProvidersByService(serviceId, { city, area, pincode, av
 }
 
 export async function getProviderById(id) {
-  const profile = await prisma.providerProfile.findUnique({
-    where: { id },
+  const profile = await prisma.providerProfile.findFirst({
+    where: { id, verificationStatus: "APPROVED" },
     include: {
       user: { select: { name: true } },
       providerServices: {
@@ -79,7 +80,7 @@ export async function getProviderById(id) {
 }
 
 export async function searchProviders({ city, area, pincode, available } = {}) {
-  const where = {};
+  const where = { verificationStatus: "APPROVED" };
 
   if (available === "true") {
     where.isAvailable = true;
@@ -110,4 +111,110 @@ export async function searchProviders({ city, area, pincode, available } = {}) {
   const providers = profiles.map(formatProvider);
 
   return { status: 200, data: { providers } };
+}
+export async function updateOwnServicePrice(userId, serviceId, price) {
+  const numericPrice = Number(price);
+
+  if (!Number.isFinite(numericPrice) || numericPrice < 0) {
+    return {
+      status: 400,
+      data: { error: "Price must be a valid non-negative number" },
+    };
+  }
+
+  const profile = await prisma.providerProfile.findUnique({
+    where: { userId },
+    select: { id: true },
+  });
+
+  if (!profile) {
+    return {
+      status: 404,
+      data: { error: "Provider profile not found" },
+    };
+  }
+
+  const providerService = await prisma.providerService.findUnique({
+    where: {
+      providerId_serviceId: {
+        providerId: profile.id,
+        serviceId,
+      },
+    },
+  });
+
+  if (!providerService) {
+    return {
+      status: 404,
+      data: { error: "This service is not assigned to you" },
+    };
+  }
+
+  const updated = await prisma.providerService.update({
+    where: {
+      providerId_serviceId: {
+        providerId: profile.id,
+        serviceId,
+      },
+    },
+    data: {
+      price: numericPrice,
+    },
+    select: {
+      providerId: true,
+      serviceId: true,
+      price: true,
+      isAvailable: true,
+    },
+  });
+
+  return {
+    status: 200,
+    data: {
+      providerService: updated,
+    },
+  };
+}
+export async function getOwnProviderServices(userId) {
+  const profile = await prisma.providerProfile.findUnique({
+    where: { userId },
+    select: {
+      id: true,
+      providerServices: {
+        include: {
+          service: {
+            select: {
+              id: true,
+              name: true,
+              category: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!profile) {
+    return {
+      status: 404,
+      data: { error: "Provider profile not found" },
+    };
+  }
+
+  return {
+    status: 200,
+    data: {
+      services: profile.providerServices.map((ps) => ({
+        id: ps.service.id,
+        name: ps.service.name,
+        categoryName: ps.service.category.name,
+        price: ps.price,
+        isAvailable: ps.isAvailable,
+      })),
+    },
+  };
 }

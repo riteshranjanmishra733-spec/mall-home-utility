@@ -244,6 +244,7 @@ async function main() {
         pincode: providerData.pincode,
         phone: providerData.phone,
         isAvailable: true,
+        verificationStatus: "APPROVED",
       },
       create: {
         userId: user.id,
@@ -253,6 +254,7 @@ async function main() {
         pincode: providerData.pincode,
         phone: providerData.phone,
         isAvailable: true,
+        verificationStatus: "APPROVED",
       },
     });
 

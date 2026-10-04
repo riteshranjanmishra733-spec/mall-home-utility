@@ -15,6 +15,7 @@ const adminBookingDetails = {
   bookingTime: true,
   address: true,
   notes: true,
+  price: true,
   status: true,
   createdAt: true,
   customer: { select: { name: true, email: true } },
@@ -71,6 +72,9 @@ export async function createBooking(customerId, input = {}) {
   ]);
 
   if (!provider) return { status: 404, data: { error: "Provider not found" } };
+  if (provider.verificationStatus !== "APPROVED") {
+    return { status: 409, data: { error: "Provider has not been approved" } };
+  }
   if (!service || !service.isActive) return { status: 404, data: { error: "Service not found" } };
   if (!providerService || !providerService.isAvailable) {
     return { status: 400, data: { error: "This provider does not offer this service" } };
@@ -84,6 +88,7 @@ export async function createBooking(customerId, input = {}) {
       customerId,
       providerId,
       serviceId,
+      price: providerService.price,
       bookingDate: parsedDate,
       bookingTime: normalizedBookingTime,
       address: address.trim(),

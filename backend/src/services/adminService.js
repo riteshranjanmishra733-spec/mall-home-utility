@@ -10,6 +10,7 @@ const providerProfileSelect = {
   pincode: true,
   phone: true,
   isAvailable: true,
+  verificationStatus: true,
   user: { select: { name: true, email: true } },
   providerServices: {
     select: {
@@ -42,6 +43,7 @@ function formatProvider(profile) {
     pincode: profile.pincode,
     phone: profile.phone,
     isAvailable: profile.isAvailable,
+    verificationStatus: profile.verificationStatus,
     offeredServices: profile.providerServices.map((providerService) => ({
       ...providerService.service,
       isAvailable: providerService.isAvailable,
@@ -99,6 +101,29 @@ export async function setProviderAvailability(providerId, isAvailable) {
   const update = await prisma.providerProfile.updateMany({
     where: { id: providerId },
     data: { isAvailable },
+  });
+  if (update.count === 0) {
+    return { status: 404, data: { error: "Provider profile not found" } };
+  }
+
+  const profile = await prisma.providerProfile.findUnique({
+    where: { id: providerId },
+    select: providerProfileSelect,
+  });
+  return { status: 200, data: { provider: formatProvider(profile) } };
+}
+
+export async function setProviderVerificationStatus(providerId, status) {
+  if (!isUuid(providerId)) {
+    return { status: 400, data: { error: "A valid provider ID is required" } };
+  }
+  if (status !== "APPROVED" && status !== "REJECTED") {
+    return { status: 400, data: { error: "Status must be APPROVED or REJECTED" } };
+  }
+
+  const update = await prisma.providerProfile.updateMany({
+    where: { id: providerId },
+    data: { verificationStatus: status },
   });
   if (update.count === 0) {
     return { status: 404, data: { error: "Provider profile not found" } };
@@ -223,5 +248,49 @@ export async function listBookings() {
       ...booking,
       provider: provider.user,
     })),
+  };
+}
+export async function setProviderServicePrice(providerId, serviceId, price) {
+  if (!isUuid(providerId) || !isUuid(serviceId)) {
+    return { status: 400, data: { error: "Valid provider and service IDs are required" } };
+  }
+
+  const numericPrice = Number(price);
+
+  if (!Number.isFinite(numericPrice) || numericPrice < 0) {
+    return { status: 400, data: { error: "Price must be a valid non-negative number" } };
+  }
+
+  const providerService = await prisma.providerService.findUnique({
+    where: {
+      providerId_serviceId: { providerId, serviceId },
+    },
+  });
+
+  if (!providerService) {
+    return {
+      status: 404,
+      data: { error: "Provider service association not found" },
+    };
+  }
+
+  const updated = await prisma.providerService.update({
+    where: {
+      providerId_serviceId: { providerId, serviceId },
+    },
+    data: {
+      price: numericPrice,
+    },
+    select: {
+      providerId: true,
+      serviceId: true,
+      price: true,
+      isAvailable: true,
+    },
+  });
+
+  return {
+    status: 200,
+    data: { providerService: updated },
   };
 }

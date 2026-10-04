@@ -111,6 +111,24 @@ export default function AdminDashboard() {
     }
   }
 
+  async function updateProviderVerification(provider, status) {
+    setUpdatingAction(`provider-verification:${provider.id}`);
+    setMutationError("");
+    try {
+      const { provider: updatedProvider } = await api.setAdminProviderVerificationStatus(
+        provider.id,
+        status
+      );
+      setProviders((current) => current.map((item) =>
+        item.id === updatedProvider.id ? updatedProvider : item
+      ));
+    } catch (err) {
+      setMutationError(err.message || "Failed to update provider verification");
+    } finally {
+      setUpdatingAction("");
+    }
+  }
+
   async function updateProviderServiceAvailability(providerId, service) {
     const actionKey = `provider-service:${providerId}:${service.id}`;
     setUpdatingAction(actionKey);
@@ -258,8 +276,8 @@ export default function AdminDashboard() {
             </Section>
 
             <Section title="Providers" count={providers.length}>
-              <Table headers={["Provider", "Location", "Availability", "Offered services"]}>
-                {providers.length === 0 ? <EmptyRow columns={4}>No provider profiles found.</EmptyRow> : providers.map((provider) => (
+              <Table headers={["Provider", "Location", "Verification", "Availability", "Offered services"]}>
+                {providers.length === 0 ? <EmptyRow columns={5}>No provider profiles found.</EmptyRow> : providers.map((provider) => (
                   <tr key={provider.id}>
                     <td className="min-w-52 px-4 py-3">
                       <p className="font-medium text-slate-800">{provider.name}</p>
@@ -268,6 +286,39 @@ export default function AdminDashboard() {
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-slate-600">
                       {[provider.city, provider.area, provider.pincode].filter(Boolean).join(", ") || "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-block rounded px-2 py-1 text-xs font-medium ${
+                        provider.verificationStatus === "APPROVED"
+                          ? "bg-green-50 text-green-700"
+                          : provider.verificationStatus === "REJECTED"
+                            ? "bg-red-50 text-red-700"
+                            : "bg-amber-50 text-amber-700"
+                      }`}>
+                        {provider.verificationStatus}
+                      </span>
+                      <div className="mt-2 flex gap-2">
+                        {provider.verificationStatus !== "APPROVED" && (
+                          <button
+                            type="button"
+                            onClick={() => updateProviderVerification(provider, "APPROVED")}
+                            disabled={Boolean(updatingAction)}
+                            className="rounded border border-green-300 px-2 py-1 text-xs text-green-700 hover:bg-green-50 disabled:opacity-60"
+                          >
+                            {updatingAction === `provider-verification:${provider.id}` ? "Saving…" : "Approve"}
+                          </button>
+                        )}
+                        {provider.verificationStatus !== "REJECTED" && (
+                          <button
+                            type="button"
+                            onClick={() => updateProviderVerification(provider, "REJECTED")}
+                            disabled={Boolean(updatingAction)}
+                            className="rounded border border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50 disabled:opacity-60"
+                          >
+                            {updatingAction === `provider-verification:${provider.id}` ? "Saving…" : "Reject"}
+                          </button>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <p className="mb-2 text-slate-600">{provider.isAvailable ? "Available" : "Unavailable"}</p>

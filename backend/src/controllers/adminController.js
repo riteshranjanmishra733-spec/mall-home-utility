@@ -23,10 +23,20 @@ export const setProviderAvailability = createHandler(
   "Failed to update provider availability",
   (req) => [req.params.id, req.body?.isAvailable]
 );
+export const setProviderVerificationStatus = createHandler(
+  adminService.setProviderVerificationStatus,
+  "Failed to update provider verification status",
+  (req) => [req.params.id, req.body?.status]
+);
 export const setProviderServiceAvailability = createHandler(
   adminService.setProviderServiceAvailability,
   "Failed to update provider service availability",
   (req) => [req.params.providerId, req.params.serviceId, req.body?.isAvailable]
+);
+export const setProviderServicePrice = createHandler(
+  adminService.setProviderServicePrice,
+  "Failed to update provider service price",
+  (req) => [req.params.providerId, req.params.serviceId, req.body?.price]
 );
 export const setServiceStatus = createHandler(
   adminService.setServiceStatus,

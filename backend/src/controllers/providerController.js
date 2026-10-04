@@ -1,4 +1,4 @@
-import { getProvidersByService, getProviderById, searchProviders } from "../services/providerService.js";
+import { getProvidersByService, getProviderById, searchProviders,updateOwnServicePrice,getOwnProviderServices, } from "../services/providerService.js";
 
 export async function listProvidersForService(req, res) {
   try {
@@ -35,5 +35,40 @@ export async function searchAllProviders(req, res) {
   } catch (err) {
     console.error("Search providers error:", err);
     return res.status(500).json({ error: "Failed to search providers" });
+  }
+}
+export async function getOwnServices(req, res) {
+  try {
+    const result = await getOwnProviderServices(req.user.id);
+
+    return res.status(result.status).json(result.data);
+  } catch (err) {
+    console.error("Get provider services error:", err);
+    return res.status(500).json({
+      error: "Failed to fetch provider services",
+    });
+  }
+}
+export async function updateProviderServicePrice(req, res) {
+  try {
+    const { serviceId } = req.params;
+    const { price } = req.body;
+
+    if (!serviceId) {
+      return res.status(400).json({ error: "Service ID is required" });
+    }
+
+    const result = await updateOwnServicePrice(
+      req.user.id,
+      serviceId,
+      price
+    );
+
+    return res.status(result.status).json(result.data);
+  } catch (err) {
+    console.error("Update provider service price error:", err);
+    return res.status(500).json({
+      error: "Failed to update service price",
+    });
   }
 }
